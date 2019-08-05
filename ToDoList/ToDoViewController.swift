@@ -10,21 +10,24 @@ import UIKit
 
 class ToDoViewController: UITableViewController  {
     
-    var missionsArr : [String] = []
+    var itemArr : [String] = []
+    let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
         configureTableView()
-        
+        if let items = defaults.array(forKey: "itemArr") as? [String] {
+        itemArr = items
+        }
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return missionsArr.count
+        return itemArr.count
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "ToDoItemCell", for: indexPath)
-        cell.textLabel?.text = missionsArr[indexPath.row]
+        cell.textLabel?.text = itemArr[indexPath.row]
         return cell
     }
     
@@ -42,11 +45,24 @@ class ToDoViewController: UITableViewController  {
         }
     }
     
+    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
+        return true
+    }
+    
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        if (editingStyle == .delete) {
+            itemArr.remove(at: indexPath.row)
+            self.defaults.set(self.itemArr, forKey: "itemArr")
+            tableView.reloadData()
+        }
+    }
+    
     @IBAction func AddItemBTN(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         let alert = UIAlertController(title: "Add new item to your ToDo list", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add item", style: .default) { (action) in
-            self.missionsArr.append(textField.text!)
+            self.itemArr.append(textField.text!)
+            self.defaults.set(self.itemArr, forKey: "itemArr")
             self.tableView.reloadData()
         }
         
