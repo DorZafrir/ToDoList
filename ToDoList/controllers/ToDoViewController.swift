@@ -11,7 +11,8 @@ import UIKit
 class ToDoViewController: UITableViewController  {
     
     var itemArr = [Item]()
-    let defaults = UserDefaults.standard
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
+   
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -19,10 +20,9 @@ class ToDoViewController: UITableViewController  {
         let newItem = Item()
         newItem.itemText = "dor"
         itemArr.append(newItem)
+        loadData()
         
-        if let items = defaults.array(forKey: "itemArr") as? [Item]{
-            itemArr = items
-        }
+
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -46,9 +46,8 @@ class ToDoViewController: UITableViewController  {
     
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         itemArr[indexPath.row].isChecked = !itemArr[indexPath.row].isChecked
-        
         tableView.deselectRow(at: indexPath, animated: true)
-        tableView.reloadData()
+        saveData()
     }
     
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
@@ -58,8 +57,7 @@ class ToDoViewController: UITableViewController  {
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if (editingStyle == .delete) {
             itemArr.remove(at: indexPath.row)
-            self.defaults.set(self.itemArr, forKey: "itemArr")
-            tableView.reloadData()
+            saveData()
         }
     }
     
@@ -70,8 +68,7 @@ class ToDoViewController: UITableViewController  {
             let newItem = Item()
             newItem.itemText = textField.text!
             self.itemArr.append(newItem)
-            //            self.defaults.set(self.itemArr, forKey: "itemArr")
-            self.tableView.reloadData()
+            self.saveData()
         }
         alert.addTextField { (alertTextField) in
             alertTextField.placeholder = "Create new item"
@@ -80,6 +77,31 @@ class ToDoViewController: UITableViewController  {
         alert.addAction(action)
         present(alert, animated: true, completion: nil)
         
+    }
+    
+    func saveData (){
+        let encoder = PropertyListEncoder()
+        do {
+            let data = try encoder.encode(self.itemArr)
+            try data.write(to: self.dataFilePath!)
+            
+        }catch{
+            print(error)
+        }
+        tableView.reloadData()
+    }
+    
+    func loadData (){
+        if let data = try? Data(contentsOf: dataFilePath!){
+            let decoder = PropertyListDecoder()
+            
+            do{
+                itemArr = try decoder.decode([Item].self, from: data)
+            }catch{
+                print(error)
+            }
+        }
+        tableView.reloadData()
     }
     
     
