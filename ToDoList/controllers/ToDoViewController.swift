@@ -7,22 +7,18 @@
 //
 
 import UIKit
+import CoreData
 
 class ToDoViewController: UITableViewController  {
     
     var itemArr = [Item]()
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Items.plist")
-   
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
     override func viewDidLoad() {
         super.viewDidLoad()
         configureTableView()
-        let newItem = Item()
-        newItem.itemText = "dor"
-        itemArr.append(newItem)
         loadData()
         
-
     }
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -35,7 +31,7 @@ class ToDoViewController: UITableViewController  {
         cell.textLabel?.text = item.itemText
         
         cell.accessoryType = item.isChecked ? .checkmark : .none
-
+        
         return cell
     }
     
@@ -56,17 +52,25 @@ class ToDoViewController: UITableViewController  {
     
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if (editingStyle == .delete) {
+            context.delete(itemArr[indexPath.row])
             itemArr.remove(at: indexPath.row)
             saveData()
         }
     }
     
-    @IBAction func AddItemBTN(_ sender: UIBarButtonItem) {
+    
+    
+    
+    
+    @IBAction func addItemBTN(_ sender: UIBarButtonItem) {
         var textField = UITextField()
         let alert = UIAlertController(title: "Add new item to your ToDo list", message: "", preferredStyle: .alert)
         let action = UIAlertAction(title: "Add item", style: .default) { (action) in
-            let newItem = Item()
+            
+            
+            let newItem = Item(context: self.context)
             newItem.itemText = textField.text!
+            newItem.isChecked = false
             self.itemArr.append(newItem)
             self.saveData()
         }
@@ -80,28 +84,48 @@ class ToDoViewController: UITableViewController  {
     }
     
     func saveData (){
-        let encoder = PropertyListEncoder()
         do {
-            let data = try encoder.encode(self.itemArr)
-            try data.write(to: self.dataFilePath!)
-            
+            try context.save()
         }catch{
-            print(error)
+            print("error saving context: \(error)")
         }
         tableView.reloadData()
     }
     
-    func loadData (){
-        if let data = try? Data(contentsOf: dataFilePath!){
-            let decoder = PropertyListDecoder()
-            
-            do{
-                itemArr = try decoder.decode([Item].self, from: data)
-            }catch{
-                print(error)
-            }
+    func loadData (with request : NSFetchRequest<Item> = Item.fetchRequest()){
+        do {
+            itemArr =  try context.fetch(request)
+        } catch {
+            print("error reloading data: \(error)")
         }
         tableView.reloadData()
+    }
+    
+}
+
+//MARK: - extensions
+
+extension ToDoViewController : UISearchBarDelegate{
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        if searchBar.text?.count == 0{
+            loadData()
+        }else {
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        request.predicate =  NSPredicate(format: "itemText CONTAINS[cd] %@", searchBar.text!)
+        request.sortDescriptors = [NSSortDescriptor(key: "itemText", ascending: true)]
+        loadData(with: request)
+        }
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        if searchBar.text?.count == 0{
+            loadData()
+            
+            DispatchQueue.main.async {
+                searchBar.resignFirstResponder()
+            }
+        }
+        
     }
     
     
